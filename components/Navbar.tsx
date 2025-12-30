@@ -32,99 +32,98 @@ const Navbar: React.FC<NavbarProps> = ({
   const currentLang = languages.find(l => l.code === lang) || languages[0];
 
   const isPathActive = (path: string) => {
-    const current = currentPath.toLowerCase();
+    const current = currentHash.toLowerCase();
     const target = path.toLowerCase();
-    if (target === '/home') return current === '/' || current.endsWith('/home') || current === '';
-    return current.endsWith(target);
+    if (target.includes('home')) return current === '' || current === '#/home' || current === '#/';
+    return current.includes(target);
   };
+  
+  const currentHash = window.location.hash || '#/home';
 
   const NavLink = ({ path, label }: { path: string; label: string }) => {
     const active = isPathActive(path);
     return (
       <button 
         onClick={() => { onNavigate(path); setIsMobileMenuOpen(false); }}
-        className={`font-semibold transition-all text-sm lg:text-base relative py-1 px-1 ${
+        className={`font-black uppercase tracking-widest text-[11px] lg:text-[13px] transition-all relative py-2 px-1 ${
           active 
-            ? 'text-emerald-600 dark:text-emerald-400' 
-            : 'text-emerald-900 dark:text-emerald-100 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'text-emerald-500' 
+            : 'text-slate-900 dark:text-slate-100 hover:text-emerald-500'
         }`}
       >
         {label}
         {active && (
-          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600 dark:bg-emerald-400 rounded-full"></span>
+          <span className="absolute bottom-0 left-0 w-full h-1 bg-emerald-500 rounded-full animate-in slide-in-from-left duration-300"></span>
         )}
       </button>
     );
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[80] glass-effect border-b border-emerald-200 dark:border-emerald-800/50 transition-all duration-300 dark:bg-emerald-950/90">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20 lg:h-24">
-          {/* Logo */}
+    <nav className="fixed top-0 left-0 right-0 z-[100] transition-all duration-500">
+      <div className="mx-auto px-4 sm:px-10 py-4 lg:py-6">
+        <div className="max-w-7xl mx-auto h-20 lg:h-24 glass-effect dark:bg-[#030712]/80 bg-white/80 rounded-[2.5rem] lg:rounded-[3rem] border border-white/20 dark:border-white/5 shadow-2xl px-6 lg:px-10 flex items-center justify-between">
+          
+          {/* Logo Section */}
           <div className="flex items-center cursor-pointer group" onClick={() => onNavigate('/home')}>
-            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-white dark:bg-emerald-900 rounded-2xl flex items-center justify-center mr-3 lg:mr-4 shadow-lg group-hover:scale-105 transition-all overflow-hidden relative border border-emerald-100 dark:border-emerald-800">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-white dark:bg-emerald-950 rounded-2xl lg:rounded-3xl flex items-center justify-center mr-4 shadow-2xl border border-white/20 dark:border-emerald-500/10 group-hover:scale-105 transition-all overflow-hidden relative">
               {logoUrl ? (
-                <img src={logoUrl} alt="Simosh Logo" className="w-full h-full object-cover" />
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-emerald-600 flex items-center justify-center text-white">
-                   <i className="fas fa-leaf text-xl lg:text-2xl"></i>
+                   <i className="fas fa-leaf text-xl lg:text-3xl"></i>
                 </div>
               )}
             </div>
             <div className="flex flex-col">
-              <span className="text-lg lg:text-2xl font-black text-emerald-950 dark:text-emerald-50 tracking-tight leading-none">Simosh</span>
-              <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em] mt-1 hidden sm:block">Natural Care</span>
+              <span className="text-xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">Simosh</span>
+              <span className="text-[9px] lg:text-[10px] text-emerald-500 font-black uppercase tracking-[0.3em] mt-1 hidden sm:block">Natural</span>
             </div>
           </div>
           
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex space-x-6 lg:space-x-8">
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center space-x-8">
             <NavLink path="/home" label={t.home} />
             <NavLink path="/products" label={t.products} />
             <NavLink path="/about" label={t.about} />
+            <NavLink path="/contact" label={t.contact} />
             <NavLink path="/simosh-ai" label="Simosh AI" />
           </div>
 
-          <div className="flex items-center space-x-2 lg:space-x-4">
+          <div className="flex items-center space-x-3 lg:space-x-5">
             {/* Theme Toggle */}
             <button 
               onClick={onThemeToggle}
-              className="p-2 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-200/50 dark:hover:bg-emerald-800 transition-all border border-emerald-200 dark:border-emerald-800"
-              title="Mavzuni o'zgartirish"
+              className="w-11 h-11 lg:w-14 lg:h-14 rounded-2xl lg:rounded-[1.5rem] bg-slate-100 dark:bg-white/5 dark:text-emerald-400 text-slate-600 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 transition-all border border-transparent dark:border-white/5 shadow-inner flex items-center justify-center"
             >
-              <i className={`fas ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-base`}></i>
+              <i className={`fas ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-base lg:text-xl`}></i>
             </button>
 
-            {/* Language Switcher */}
+            {/* Lang Switcher */}
             <div className="relative">
               <button 
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="flex items-center space-x-2 px-2 lg:px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-emerald-900/50 shadow-sm hover:shadow-md transition-all group"
+                className="flex items-center space-x-3 px-3 lg:px-5 py-2.5 lg:py-3.5 rounded-2xl lg:rounded-[1.5rem] border border-slate-100 dark:border-white/5 bg-slate-100 dark:bg-white/5 shadow-inner hover:border-emerald-500/30 transition-all"
               >
-                <span className="text-lg leading-none drop-shadow-sm transform group-hover:scale-110 transition-transform">
-                  {currentLang.flag}
-                </span>
-                <span className="text-xs font-bold text-emerald-950 dark:text-emerald-50 hidden sm:inline">{currentLang.label}</span>
+                <span className="text-xl lg:text-2xl leading-none">{currentLang.flag}</span>
+                <span className="text-xs font-black text-slate-900 dark:text-white hidden lg:inline tracking-widest">{currentLang.label}</span>
                 <i className={`fas fa-chevron-down text-[10px] text-emerald-500 transition-transform ${isLangOpen ? 'rotate-180' : ''}`}></i>
               </button>
               
               {isLangOpen && (
-                <div className="absolute right-0 mt-3 w-40 lg:w-48 bg-white dark:bg-emerald-900 rounded-2xl shadow-2xl border border-emerald-200 dark:border-emerald-800 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
-                  <div className="py-2">
+                <div className="absolute right-0 mt-5 w-48 lg:w-56 bg-white dark:bg-[#080c14] rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] border border-slate-100 dark:border-white/5 overflow-hidden animate-in fade-in slide-in-from-top-6 duration-300">
+                  <div className="p-3 space-y-1">
                     {languages.map((l) => (
                       <button
                         key={l.code}
                         onClick={() => { onLangChange(l.code); setIsLangOpen(false); }}
-                        className={`w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-emerald-50 dark:hover:bg-emerald-800 transition-colors ${lang === l.code ? 'bg-emerald-50/50 dark:bg-emerald-800/50' : ''}`}
+                        className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-sm transition-all ${lang === l.code ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/20' : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-800 dark:text-slate-300'}`}
                       >
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg leading-none">{l.flag}</span>
-                          <span className={`font-bold ${lang === l.code ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-800 dark:text-emerald-100/70'}`}>
-                            {l.nativeName}
-                          </span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-xl">{l.flag}</span>
+                          <span className="font-black tracking-widest uppercase text-[10px]">{l.nativeName}</span>
                         </div>
-                        {lang === l.code && <i className="fas fa-check text-[10px] text-emerald-500"></i>}
+                        {lang === l.code && <i className="fas fa-check text-[10px]"></i>}
                       </button>
                     ))}
                   </div>
@@ -133,33 +132,55 @@ const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Cart Button */}
-            <button onClick={onCartClick} className="relative p-2 text-emerald-900 dark:text-emerald-300 hover:text-emerald-600 bg-emerald-100/50 dark:bg-emerald-900/50 rounded-xl transition-all hover:scale-105 border border-emerald-200 dark:border-emerald-800">
-              <i className="fas fa-shopping-basket text-base lg:text-lg"></i>
+            <button 
+              onClick={onCartClick} 
+              className="relative w-11 h-11 lg:w-14 lg:h-14 bg-emerald-600 text-white rounded-2xl lg:rounded-[1.5rem] flex items-center justify-center hover:bg-emerald-700 hover:scale-105 active:scale-90 transition-all shadow-2xl shadow-emerald-600/30"
+            >
+              <i className="fas fa-shopping-basket text-base lg:text-xl"></i>
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full border-2 border-white dark:border-emerald-900">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black min-w-[20px] h-5 flex items-center justify-center rounded-full border-[3px] border-white dark:border-[#030712] shadow-lg">
                   {cartCount}
                 </span>
               )}
             </button>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Toggle */}
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-emerald-900 dark:text-emerald-300"
+              className="md:hidden w-11 h-11 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-900 dark:text-white"
             >
-              <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-lg`}></i>
+              <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars-staggered'} text-xl`}></i>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-emerald-950 border-t border-emerald-100 dark:border-emerald-800 py-6 px-4 space-y-2 animate-in slide-in-from-top duration-300">
-          <button onClick={() => { onNavigate('/home'); setIsMobileMenuOpen(false); }} className={`block w-full text-left px-4 py-3 text-lg font-bold ${isPathActive('/home') ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-emerald-950 dark:text-emerald-50'}`}>{t.home}</button>
-          <button onClick={() => { onNavigate('/products'); setIsMobileMenuOpen(false); }} className={`block w-full text-left px-4 py-3 text-lg font-bold ${isPathActive('/products') ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-emerald-950 dark:text-emerald-50'}`}>{t.products}</button>
-          <button onClick={() => { onNavigate('/about'); setIsMobileMenuOpen(false); }} className={`block w-full text-left px-4 py-3 text-lg font-bold ${isPathActive('/about') ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-emerald-950 dark:text-emerald-50'}`}>{t.about}</button>
-          <button onClick={() => { onNavigate('/simosh-ai'); setIsMobileMenuOpen(false); }} className={`block w-full text-left px-4 py-3 text-lg font-bold ${isPathActive('/simosh-ai') ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-emerald-950 dark:text-emerald-50'}`}>Simosh AI</button>
+        <div className="md:hidden fixed inset-0 z-[90] animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setIsMobileMenuOpen(false)}></div>
+          <div className="absolute top-28 left-4 right-4 bg-white dark:bg-[#080c14] rounded-[3rem] border border-white/10 p-10 space-y-6 shadow-3xl animate-in slide-in-from-top-10 duration-500">
+            <button onClick={() => { onNavigate('/home'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-6 w-full text-left px-8 py-6 rounded-3xl text-xl font-black uppercase tracking-widest ${isPathActive('/home') ? 'bg-emerald-500 text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+               <i className="fas fa-home-alt w-8 text-center"></i>
+               {t.home}
+            </button>
+            <button onClick={() => { onNavigate('/products'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-6 w-full text-left px-8 py-6 rounded-3xl text-xl font-black uppercase tracking-widest ${isPathActive('/products') ? 'bg-emerald-500 text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+               <i className="fas fa-soap w-8 text-center"></i>
+               {t.products}
+            </button>
+            <button onClick={() => { onNavigate('/about'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-6 w-full text-left px-8 py-6 rounded-3xl text-xl font-black uppercase tracking-widest ${isPathActive('/about') ? 'bg-emerald-500 text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+               <i className="fas fa-info-circle w-8 text-center"></i>
+               {t.about}
+            </button>
+            <button onClick={() => { onNavigate('/contact'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-6 w-full text-left px-8 py-6 rounded-3xl text-xl font-black uppercase tracking-widest ${isPathActive('/contact') ? 'bg-emerald-500 text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+               <i className="fas fa-envelope-open-text w-8 text-center"></i>
+               {t.contact}
+            </button>
+            <button onClick={() => { onNavigate('/simosh-ai'); setIsMobileMenuOpen(false); }} className={`flex items-center gap-6 w-full text-left px-8 py-6 rounded-3xl text-xl font-black uppercase tracking-widest ${isPathActive('/simosh-ai') ? 'bg-emerald-500 text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+               <i className="fas fa-robot w-8 text-center"></i>
+               Simosh AI
+            </button>
+          </div>
         </div>
       )}
     </nav>

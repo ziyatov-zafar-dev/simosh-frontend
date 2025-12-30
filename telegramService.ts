@@ -3,29 +3,32 @@ import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS } from './constants';
 import { CartItem, Language } from './types';
 
 export const sendOrderToTelegram = async (
-  userData: { firstName: string; lastName: string; phone: string },
+  userData: { firstName: string; lastName: string; phone: string; description: string },
   cart: CartItem[],
   total: number,
   lang: Language
 ) => {
   const date = new Date().toLocaleString();
   const productList = cart
-    .map((item) => `📦 ${item.name[lang]} x ${item.quantity} - ${(item.price * item.quantity).toLocaleString()} UZS`)
+    .map((item) => `• <b>${item.name[lang]}</b> x ${item.quantity} - ${(item.price * item.quantity).toLocaleString()} UZS`)
     .join('\n');
 
   const message = `
-🆕 YANGI BUYURTMA!
-📅 Sana: ${date}
+🚀 <b>YANGI BUYURTMA QABUL QILINDI!</b>
+━━━━━━━━━━━━━━━━━━
+📅 <b>Sana:</b> ${date}
 
-👤 MIJOZ:
-- Ism: ${userData.firstName}
-- Familiya: ${userData.lastName}
-- Tel: ${userData.phone}
+👤 <b>MIJOZ MA'LUMOTLARI:</b>
+👤 <b>Ism:</b> ${userData.firstName}
+👥 <b>Familiya:</b> ${userData.lastName}
+📞 <b>Telefon:</b> <code>${userData.phone}</code>
+📝 <b>Izoh:</b> <i>${userData.description || 'Izoh qoldirilmagan'}</i>
 
-🛒 MAHSULOTLAR:
+🛒 <b>MAHSULOTLAR:</b>
 ${productList}
 
-💰 JAMI: ${total.toLocaleString()} UZS
+💰 <b>JAMI SUMMA:</b> <u>${total.toLocaleString()} UZS</u>
+━━━━━━━━━━━━━━━━━━
   `.trim();
 
   const requests = TELEGRAM_CHAT_IDS.map((chatId) =>
@@ -35,14 +38,15 @@ ${productList}
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        parse_mode: 'HTML',
+        parse_mode: 'HTML'
+        // Web App tugmasi olib tashlandi
       }),
     })
   );
 
   try {
-    await Promise.all(requests);
-    return true;
+    const responses = await Promise.all(requests);
+    return responses.every(r => r.ok);
   } catch (error) {
     console.error('Telegram API Error:', error);
     return false;
