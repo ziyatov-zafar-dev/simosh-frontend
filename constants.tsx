@@ -6,7 +6,7 @@ export const TELEGRAM_BOT_TOKEN = '8519627435:AAGMI8QPtKCPW85GR4Hv0yqDc90HKePs4L
 export const TELEGRAM_CHAT_IDS = ['7882316826'];
 
 // Web App manzili
-export const FRONTEND_URL = 'https://simosh-natural.example.com';
+export const FRONTEND_URL = 'https://simosh-admin-backend-wb84.vercel.app/#/orders/in_progress';
 
 export const TRANSLATIONS: Record<Language, any> = {
   uz: {
