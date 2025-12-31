@@ -7,6 +7,7 @@ import AIConsultant from './components/AIConsultant';
 import AboutSection from './components/AboutSection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
+import CountrySelector from './components/CountrySelector';
 import { Product, CartItem, Language, AboutInfo } from './types';
 import { PRODUCTS, TRANSLATIONS } from './constants';
 import { fetchLogo } from './logoService';
@@ -14,7 +15,7 @@ import { fetchAboutInfo } from './aboutService';
 import { fetchActiveProducts } from './productService';
 import { sendOrderToTelegram } from './telegramService';
 import { createOrder } from './statisticsService';
-import { formatFullPhone, formatDisplayPhone } from './utils';
+import { formatFullPhone, formatDisplayPhone, isValidPhoneParts, formatPrettyPhone } from './utils';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('uz');
@@ -90,20 +91,46 @@ const App: React.FC = () => {
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.phone) return;
+    
+    if (!formData.firstName || !formData.lastName || !formData.phone || cart.length === 0) {
+      alert(t.cart.form.required || "Barcha maydonlarni to'ldiring");
+      return;
+    }
+
+    if (!isValidPhoneParts(countryCode, formData.phone)) {
+      alert(t.cart.form.phoneError || "Telefon raqami noto'g'ri");
+      return;
+    }
+    
     setIsSubmitting(true);
-    const success = await sendOrderToTelegram(formData, cart, cartTotal, lang);
-    if (success) {
-      await createOrder({
+    const apiPhone = formatFullPhone(countryCode, formData.phone);
+    const prettyPhone = formatPrettyPhone(countryCode, formData.phone);
+    
+    try {
+      const apiSuccess = await createOrder({
         items: cart.map(i => ({ productId: i.id, quantity: i.quantity })),
         status: "IN_PROGRESS",
-        ...formData,
-        phone: formatFullPhone(countryCode, formData.phone)
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: apiPhone,
+        description: formData.description
       });
-      setIsOrderSubmitted(true);
-      setCart([]);
+
+      if (apiSuccess) {
+        await sendOrderToTelegram({ ...formData, phone: prettyPhone }, cart, cartTotal, lang).catch(console.error);
+
+        setIsOrderSubmitted(true);
+        setCart([]);
+        setFormData({ firstName: '', lastName: '', phone: '', description: '' });
+      } else {
+        alert(t.cart.error || "Buyurtma berishda xatolik yuz berdi.");
+      }
+    } catch (error) {
+      console.error("Checkout process failed:", error);
+      alert(t.cart.error || "Tizimda kutilmagan xatolik yuz berdi.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   if (isInitialLoading) return (
@@ -158,7 +185,6 @@ const App: React.FC = () => {
 
       <Footer lang={lang} aboutInfo={aboutInfo} logoUrl={logoUrl} onNavigate={navigate} />
 
-      {/* Cart Drawer */}
       {isCartOpen && (
         <div className="fixed inset-0 z-[200] flex justify-end">
           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setIsCartOpen(false)}></div>
@@ -178,24 +204,38 @@ const App: React.FC = () => {
                   </div>
                   <h3 className="text-3xl font-black dark:text-white uppercase tracking-tight">{t.cart.success}</h3>
                   <p className="text-slate-500 font-medium">{t.cart.successDesc}</p>
-                  <button onClick={() => { setIsCartOpen(false); setIsOrderSubmitted(false); }} className="px-10 py-5 bg-emerald-600 text-white rounded-full font-black uppercase text-xs">Yopish</button>
+                  <button onClick={() => { setIsCartOpen(false); setIsOrderSubmitted(false); setShowCheckoutForm(false); }} className="px-10 py-5 bg-emerald-600 text-white rounded-full font-black uppercase text-xs">Yopish</button>
                 </div>
               ) : showCheckoutForm ? (
                 <form onSubmit={handleCheckoutSubmit} className="space-y-6">
-                  <input required type="text" placeholder={t.cart.form.firstName} value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full bg-slate-50 dark:bg-white/5 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white font-bold" />
-                  <div className="flex gap-2">
-                    <select value={countryCode} onChange={e => setCountryCode(e.target.value)} className="bg-slate-50 dark:bg-white/5 p-6 rounded-3xl dark:text-white font-black outline-none">
-                      <option value="+998">🇺🇿</option>
-                      <option value="+90">🇹🇷</option>
-                    </select>
-                    <input required type="tel" placeholder="90 123 45 67" value={formData.phone} onChange={e => setFormData({...formData, phone: formatDisplayPhone(countryCode, e.target.value)})} className="flex-1 bg-slate-50 dark:bg-white/5 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white font-bold" />
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest ml-4">{t.cart.form.firstName}*</label>
+                    <input required type="text" placeholder="..." value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full bg-slate-50 dark:bg-white/5 p-6 rounded-3xl outline-none border-2 border-transparent focus:border-emerald-500/50 dark:text-white font-bold" />
                   </div>
-                  <textarea rows={3} placeholder={t.cart.form.description} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-50 dark:bg-white/5 p-6 rounded-3xl outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white font-bold resize-none" />
-                  <button disabled={isSubmitting} className="w-full py-6 bg-emerald-600 text-white font-black rounded-full shadow-2xl uppercase tracking-widest text-xs">
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest ml-4">{t.cart.form.lastName}*</label>
+                    <input required type="text" placeholder="..." value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full bg-slate-50 dark:bg-white/5 p-6 rounded-3xl outline-none border-2 border-transparent focus:border-emerald-500/50 dark:text-white font-bold" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest ml-4">{t.cart.form.phone}*</label>
+                    <div className="flex gap-2 h-[72px]">
+                      <CountrySelector value={countryCode} onChange={setCountryCode} />
+                      <input required type="tel" placeholder="90 123 45 67" value={formData.phone} onChange={e => setFormData({...formData, phone: formatDisplayPhone(countryCode, e.target.value)})} className="flex-1 bg-slate-50 dark:bg-white/5 px-6 rounded-3xl outline-none border-2 border-transparent focus:border-emerald-500/50 dark:text-white font-bold" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest ml-4">{t.cart.form.description}</label>
+                    <textarea rows={3} placeholder="..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-50 dark:bg-white/5 p-6 rounded-3xl outline-none border-2 border-transparent focus:border-emerald-500/50 dark:text-white font-bold resize-none" />
+                  </div>
+
+                  <button disabled={isSubmitting} className="w-full py-6 bg-emerald-600 text-white font-black rounded-full shadow-2xl uppercase tracking-widest text-xs mt-4 active:scale-95 transition-all">
                     {isSubmitting ? <i className="fas fa-spinner fa-spin mr-3"></i> : <i className="fas fa-check-circle mr-3"></i>}
-                    Buyurtmani tasdiqlash
+                    Tasdiqlash
                   </button>
-                  <button type="button" onClick={() => setShowCheckoutForm(false)} className="w-full text-slate-400 font-black uppercase tracking-widest text-[10px]">Orqaga qaytish</button>
+                  <button type="button" onClick={() => setShowCheckoutForm(false)} className="w-full text-slate-400 font-black uppercase tracking-widest text-[10px] mt-2">Orqaga qaytish</button>
                 </form>
               ) : cart.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center opacity-30 space-y-4">

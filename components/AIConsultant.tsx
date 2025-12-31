@@ -1,8 +1,9 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Message, ChatState, Language, Product, AboutInfo } from '../types';
+import { Message, ChatState, Language, Product, AboutInfo, Statistics } from '../types';
 import { getGeminiResponse } from '../geminiService';
 import { TRANSLATIONS, getSystemInstruction } from '../constants';
+import { fetchStatistics } from '../statisticsService';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 
 interface AIConsultantProps {
@@ -26,9 +27,10 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
+  const [stats, setStats] = useState<Statistics | null>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
@@ -40,6 +42,11 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
 
   const SHARED_VOICE = 'Zephyr';
+
+  // Statistika va boshqa ma'lumotlarni yuklash
+  useEffect(() => {
+    fetchStatistics().then(setStats).catch(console.error);
+  }, []);
 
   useEffect(() => {
     setChat(prev => ({
@@ -57,7 +64,6 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     }
   }, [chat.messages, chat.isLoading]);
 
-  // Audio helper functions
   const encode = (bytes: Uint8Array) => {
     let binary = '';
     const len = bytes.byteLength;
@@ -104,7 +110,7 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     setInput('');
     const base64Image = selectedImage ? selectedImage.split(',')[1] : undefined;
     setSelectedImage(null);
-    const aiResponse = await getGeminiResponse(currentHistory, lang, products, aboutInfo, base64Image);
+    const aiResponse = await getGeminiResponse(currentHistory, lang, products, aboutInfo, base64Image, stats);
     setChat(prev => ({ ...prev, messages: [...currentHistory, { role: 'model', text: aiResponse }], isLoading: false }));
   };
 
@@ -223,10 +229,10 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 if (ctx && video.videoWidth > 0) {
-                  canvas.width = video.videoWidth;
-                  canvas.height = video.videoHeight;
-                  ctx.drawImage(video, 0, 0);
-                  const base64Data = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+                  canvas.width = 480; 
+                  canvas.height = (video.videoHeight / video.videoWidth) * 480;
+                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                  const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
                   sessionPromise.then(session => {
                     session.sendRealtimeInput({ media: { data: base64Data, mimeType: 'image/jpeg' } });
                   }).catch(() => {});
@@ -260,12 +266,14 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: SHARED_VOICE } } },
-          systemInstruction: getSystemInstruction(lang, products, aboutInfo)
+          systemInstruction: getSystemInstruction(lang, products, aboutInfo, stats),
+          inputAudioTranscription: {}, 
+          outputAudioTranscription: {}
         }
       });
       sessionPromiseRef.current = sessionPromise;
     } catch (err) { console.error(err); }
-  }, [lang, products, aboutInfo, endVoiceCall, isCameraActive, facingMode]);
+  }, [lang, products, aboutInfo, endVoiceCall, isCameraActive, facingMode, stats]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -303,6 +311,15 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                 Simosh <span className="text-emerald-600">AI</span>
               </h2>
               <p className="text-slate-500 dark:text-slate-400 text-lg lg:text-2xl font-medium leading-relaxed max-w-xl mx-auto lg:mx-0">{t.desc}</p>
+              
+              {stats && (
+                <div className="pt-4 flex items-center justify-center lg:justify-start gap-4">
+                  <div className="bg-emerald-500/10 px-4 py-2 rounded-2xl border border-emerald-500/20">
+                    <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest block">Jami sotilgan</span>
+                    <span className="text-xl font-black dark:text-white">{stats.totalSold.toLocaleString()} ta</span>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="flex flex-col sm:flex-row gap-5">

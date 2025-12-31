@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Language, AboutInfo } from '../types';
 import { TRANSLATIONS, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS } from '../constants';
-import { isValidPhoneParts, formatFullPhone, formatDisplayPhone } from '../utils';
+import { isValidPhoneParts, formatPrettyPhone, formatDisplayPhone } from '../utils';
+import CountrySelector from './CountrySelector';
 
 interface ContactSectionProps {
   lang: Language;
@@ -35,8 +36,8 @@ const ContactSection: React.FC<ContactSectionProps> = ({ lang, aboutInfo }) => {
     if (!isValidPhoneParts(countryCode, formData.phone)) return alert(t.phoneError);
 
     setIsSubmitting(true);
-    const fullPhone = formatFullPhone(countryCode, formData.phone);
-    const msg = `📩 <b>YANGI XABAR KELDI!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Ism:</b> ${formData.firstName}\n👥 <b>Familiya:</b> ${formData.lastName}\n📞 <b>Tel:</b> <code>${fullPhone}</code>\n📝 <b>Xabar:</b> <i>${formData.message}</i>\n━━━━━━━━━━━━━━━━━━`;
+    const prettyPhone = formatPrettyPhone(countryCode, formData.phone);
+    const msg = `📩 <b>YANGI XABAR KELDI!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Ism:</b> ${formData.firstName}\n👥 <b>Familiya:</b> ${formData.lastName}\n📞 <b>Tel:</b> <code>${prettyPhone}</code>\n📝 <b>Xabar:</b> <i>${formData.message}</i>\n━━━━━━━━━━━━━━━━━━`;
 
     const requests = TELEGRAM_CHAT_IDS.map((chatId) =>
       fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -46,7 +47,6 @@ const ContactSection: React.FC<ContactSectionProps> = ({ lang, aboutInfo }) => {
           chat_id: chatId, 
           text: msg,
           parse_mode: 'HTML'
-          // Tugma (reply_markup) bu yerda yuborilmaydi
         }),
       })
     );
@@ -139,11 +139,8 @@ const ContactSection: React.FC<ContactSectionProps> = ({ lang, aboutInfo }) => {
               
               <div className="space-y-2">
                 <label className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-500 tracking-[0.2em] ml-3">{t.phone}</label>
-                <div className="flex gap-3 lg:gap-4">
-                  <select value={countryCode} onChange={e => setCountryCode(e.target.value)} className="bg-slate-50 dark:bg-white/5 px-4 lg:px-6 py-4 lg:py-6 rounded-[1.5rem] lg:rounded-[2rem] text-slate-900 dark:text-white border-2 border-transparent font-black outline-none cursor-pointer shadow-inner text-sm lg:text-base">
-                    <option value="+998">🇺🇿 +998</option>
-                    <option value="+90">🇹🇷 +90</option>
-                  </select>
+                <div className="flex gap-3 lg:gap-4 h-[72px] lg:h-[88px]">
+                  <CountrySelector value={countryCode} onChange={setCountryCode} />
                   <input required type="tel" value={formData.phone} onChange={e => handlePhoneChange(e.target.value)} placeholder="90 123 45 67" className="flex-1 bg-slate-50 dark:bg-white/5 px-6 lg:px-8 py-4 lg:py-6 rounded-[1.5rem] lg:rounded-[2rem] outline-none text-slate-900 dark:text-white font-black border-2 border-transparent focus:border-emerald-500/40 transition-all text-base lg:text-lg shadow-inner" />
                 </div>
               </div>

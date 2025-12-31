@@ -1,5 +1,6 @@
 
 import { API_BASE_URL } from "./constants";
+import { Statistics } from "./types";
 
 export interface OrderItem {
   productId: string;
@@ -16,6 +17,22 @@ export interface OrderPayload {
 }
 
 /**
+ * Umumiy statistikani olish
+ */
+export const fetchStatistics = async (): Promise<Statistics | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/statistics`);
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching statistics:", error);
+    return null;
+  }
+};
+
+/**
  * Buyurtmani statistikaga va bazaga qayd etish
  */
 export const createOrder = async (orderData: OrderPayload): Promise<boolean> => {
@@ -29,14 +46,12 @@ export const createOrder = async (orderData: OrderPayload): Promise<boolean> => 
     });
 
     if (response.ok) {
-      console.log("Sotuv muvaffaqiyatli qayd etildi");
       return true;
     } else {
-      console.warn(`Statistika qayd etishda xatolik: ${response.statusText}`);
       return false;
     }
   } catch (error) {
-    console.error("Statistika API bilan ulanishda xatolik:", error);
+    console.error("Network error while saving order:", error);
     return false;
   }
 };

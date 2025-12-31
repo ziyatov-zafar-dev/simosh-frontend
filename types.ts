@@ -77,3 +77,13 @@ export interface AboutInfo {
   telegram: string;
   phone: string;
 }
+
+export interface ProductStat {
+  productId: string;
+  soldCount: number;
+}
+
+export interface Statistics {
+  totalSold: number;
+  products: ProductStat[];
+}

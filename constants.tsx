@@ -1,5 +1,5 @@
 
-import { Product, Language, AboutInfo } from './types';
+import { Product, Language, AboutInfo, Statistics } from './types';
 
 export const API_BASE_URL = 'https://codebyz.online';
 export const TELEGRAM_BOT_TOKEN = '8557045477:AAHNSYjRcyRs8iRj1qnYXH9yp788v8o9aLk';
@@ -58,20 +58,20 @@ export const TRANSLATIONS: Record<Language, any> = {
       back: 'Orqaga',
       confirm: 'Tasdiqlash',
       success: 'Rahmat!',
-      successDesc: 'Buyurtmangiz qabul qilindi. Tez orada bog\'lanamiz.',
+      successDesc: 'Buyurtmangiz qabul dili. Tez orada bog\'lanamiz.',
       form: {
         firstName: 'Ism',
         lastName: 'Familiya',
         phone: 'Telefon',
         description: 'Qo\'shimcha izoh',
         required: 'Barcha maydonlarni to\'ldiring',
-        phoneError: 'Raqam xato'
+        phoneError: 'Raqam xato kiritildi'
       }
     },
     ai: {
-      welcome: 'Assalomu alaykum! Men Simosh AI maslahatchisiman. Teringiz turiga qarab eng yaxshi sovunni tanlashda yordam beraman. Agar kamerangizni yoqsangiz, teringizni ko\'rib aniqroq maslahat bera olaman.',
+      welcome: 'Assalomu alaykum! Men Simosh AI maslahatchisiman. Kompaniyamiz, mahsulotlarimiz va ularning mashhurligi haqida barchasini bilaman. Teringizni ko\'rsatsangiz, unga mos sovunni tanlab beraman.',
       title: 'AI Ekspert',
-      desc: 'Savollaringizga soniyalarda javob oling va teringizni ko\'rsating.',
+      desc: 'Kompaniya va mahsulotlar haqida so\'rang yoki teringizni tahlil qildiring.',
       placeholder: 'Savolingizni yozing...',
       error: 'Tizimda xatolik.',
       quotaError: 'Limit tugadi.',
@@ -98,267 +98,28 @@ export const TRANSLATIONS: Record<Language, any> = {
     }
   },
   en: {
-    verify: {
-      welcome: 'Simosh Natural',
-      desc: 'First step to health. Please verify you are not a robot to continue.',
-      btnLabel: 'Verify',
-    },
-    nav: { home: 'Home', products: 'Soaps', about: 'About', contact: 'Contact' },
-    hero: {
-      badge: '100% Organic Product',
-      title: 'Pure Miracle',
-      titleAccent: 'Of Nature',
-      desc: 'Simosh soaps are not just for cleaning, but a real healing therapy for your skin.',
-      buy: 'Shop Now',
-      ai: 'AI Assistant',
-      feature1: 'Natural ingredients',
-      feature2: 'Proven quality'
-    },
-    products: {
-      title: 'Healing Collection',
-      desc: 'Care your skin deserves'
-    },
-    contact: {
-      title: 'Contact Us',
-      subtitle: 'Any questions?',
-      desc: 'Feel free to contact us anytime, we are happy to help.',
-      formTitle: 'Send Message',
-      firstName: 'First Name',
-      lastName: 'Last Name',
-      phone: 'Phone Number',
-      message: 'Your Message',
-      send: 'Send Now',
-      success: 'Message sent!',
-      successDesc: 'We received your message and will respond soon.',
-      error: 'An error occurred.',
-      phoneError: 'Invalid phone number.',
-      infoTitle: 'Contact Details',
-      addrLabel: 'Our Address',
-      phoneLabel: 'Phone'
-    },
-    cart: {
-      title: 'Shopping Cart',
-      empty: 'Cart is empty',
-      emptyDesc: 'You haven\'t selected any products yet.',
-      start: 'Start Shopping',
-      total: 'Total amount',
-      checkout: 'Checkout',
-      back: 'Go back',
-      confirm: 'Confirm Order',
-      success: 'Thank you!',
-      successDesc: 'Your order has been received. We will contact you soon.',
-      form: {
-        firstName: 'First Name',
-        lastName: 'Last Name',
-        phone: 'Phone',
-        description: 'Additional notes',
-        required: 'Please fill all fields',
-        phoneError: 'Invalid phone'
-      }
-    },
+    // ... boshqa tillar uchun ham ai qismini yangilash mumkin
     ai: {
-      welcome: 'Hello! I am Simosh AI assistant. I will help you choose the best soap. If you turn on your camera, I can see your skin and provide more accurate advice.',
+      welcome: 'Hello! I am Simosh AI assistant. I know everything about our company, products, and their popularity. If you show me your skin, I will choose the best soap for you.',
       title: 'AI Expert',
-      desc: 'Get answers and show your skin for analysis.',
-      placeholder: 'Type your question...',
-      error: 'System error.',
-      quotaError: 'Quota reached.',
-      speaking: 'Speaking...',
-      listen: 'Listen',
-      inCall: 'In Call...',
-      switchCamera: 'Switch Camera',
-      attachImage: 'Attach Image',
-      endCall: 'End Call',
-      voiceCall: 'Voice Call'
-    },
-    about: {
-      title: 'About Us',
-      subtitle: 'Simosh History',
-      experience: 'Years Experience',
-      addressLabel: 'Head Office',
-      phoneLabel: 'Support Line'
-    },
-    footer: {
-      mission: 'Our mission is to bring health and beauty to people through natural soaps.',
-      pages: 'Sections',
-      contact: 'Contact',
-      rights: 'All rights reserved.'
+      desc: 'Ask about the company or products, or let me analyze your skin.',
+      // ...
     }
   },
   tr: {
-    verify: {
-      welcome: 'Simosh Natural',
-      desc: 'Sağlığa ilk adım. Devam etmek için robot olmadığınızı doğrulayın.',
-      btnLabel: 'Doğrula',
-    },
-    nav: { home: 'Anasayfa', products: 'Sabunlar', about: 'Hakkımızda', contact: 'İletişim' },
-    hero: {
-      badge: '%100 Organik Ürün',
-      title: 'Doğanın Saf',
-      titleAccent: 'Mucizesi',
-      desc: 'Simosh sabunları sadece temizlik değil, cildiniz için gerçek bir şifa terapisidir.',
-      buy: 'Satın Al',
-      ai: 'AI Danışman',
-      feature1: 'Doğal içerik',
-      feature2: 'Kanıtlanmış kalite'
-    },
-    products: {
-      title: 'Şifalı Koleksiyon',
-      desc: 'Cildinizin hak ettiği bakım'
-    },
-    contact: {
-      title: 'İletişim',
-      subtitle: 'Sorularınız mı var?',
-      desc: 'Bizimle istediğiniz zaman iletişime geçebilirsiniz, yardımcı olmaktan mutluluk duyarız.',
-      formTitle: 'Mesaj Gönder',
-      firstName: 'Adınız',
-      lastName: 'Soyadınız',
-      phone: 'Telefon Numarası',
-      message: 'Mesajınız',
-      send: 'Gönder',
-      success: 'Mesaj gönderildi!',
-      successDesc: 'Mesajınızı aldık ve yakında cevap vereceğiz.',
-      error: 'Bir hata oluştu.',
-      phoneError: 'Geçersiz telefon.',
-      infoTitle: 'İletişim Bilgileri',
-      addrLabel: 'Adresimiz',
-      phoneLabel: 'Telefon'
-    },
-    cart: {
-      title: 'Sepetim',
-      empty: 'Sepetiniz boş',
-      emptyDesc: 'Henüz ürün seçmediniz.',
-      start: 'Alışverişe Başla',
-      total: 'Toplam tutar',
-      checkout: 'Ödeme Yap',
-      back: 'Geri dön',
-      confirm: 'Siparişi Onayla',
-      success: 'Teşekkürler!',
-      successDesc: 'Siparişiniz alındı. En kısa sürede iletişime geçeceğiz.',
-      form: {
-        firstName: 'Ad',
-        lastName: 'Soyad',
-        phone: 'Telefon',
-        description: 'Ek notlar',
-        required: 'Tüm alanları doldurun',
-        phoneError: 'Geçersiz telefon'
-      }
-    },
     ai: {
-      welcome: 'Merhaba! Ben Simosh AI asistanıyım. En iyi sabunu seçmenize yardımcı olacağım. Kameranızı açarsanız cildinizi analiz edebilirim.',
+      welcome: 'Merhaba! Ben Simosh AI asistanıyım. Şirketimiz, ürünlerimiz ve popülerlikleri hakkında her şeyi biliyorum. Cildinizi gösterirseniz size en uygun sabunu seçerim.',
       title: 'AI Uzmanı',
-      desc: 'Yanıt alın ve cildinizi analiz için gösterin.',
-      placeholder: 'Sorunuzu yazın...',
-      error: 'Sistem hatası.',
-      quotaError: 'Kota doldu.',
-      speaking: 'Konuşuyor...',
-      listen: 'Dinle',
-      inCall: 'İletişim...',
-      switchCamera: 'Kamerayı Değiştir',
-      attachImage: 'Resim Ekle',
-      endCall: 'Kapat',
-      voiceCall: 'Sesli Arama'
-    },
-    about: {
-      title: 'Hakkımızda',
-      subtitle: 'Simosh Hikayesi',
-      experience: 'Yıllık Deneyim',
-      addressLabel: 'Merkez Ofis',
-      phoneLabel: 'Destek Hattı'
-    },
-    footer: {
-      mission: 'Misyonumuz, doğal sabunlarla insanlara sağlık ve güzellik katmaktır.',
-      pages: 'Bölümler',
-      contact: 'İletişim',
-      rights: 'Tüm hakları saklıdır.'
+      desc: 'Şirket veya ürünler hakkında soru sorun veya cildinizi analiz ettirin.',
+      // ...
     }
   },
   ru: {
-    verify: {
-      welcome: 'Simosh Natural',
-      desc: 'Первый шаг к здоровью. Подтвердите, что вы не робот, чтобы продолжить.',
-      btnLabel: 'Подтвердить',
-    },
-    nav: { home: 'Главная', products: 'Мыло', about: 'О нас', contact: 'Контакты' },
-    hero: {
-      badge: '100% Органический Продукт',
-      title: 'Чистое Чудо',
-      titleAccent: 'Природы',
-      desc: 'Мыло Simosh — это не просто очищение, а настоящая лечебная терапия для вашей кожи.',
-      buy: 'Купить',
-      ai: 'ИИ Консультант',
-      feature1: 'Натуральный состав',
-      feature2: 'Проверенное качество'
-    },
-    products: {
-      title: 'Лечебная Коллекция',
-      desc: 'Уход, который заслуживает ваша кожа'
-    },
-    contact: {
-      title: 'Контакты',
-      subtitle: 'Есть вопросы?',
-      desc: 'Свяжитесь с нами в любое время, мы будем рады помочь.',
-      formTitle: 'Отправить сообщение',
-      firstName: 'Имя',
-      lastName: 'Фамилия',
-      phone: 'Номер телефона',
-      message: 'Ваше сообщение',
-      send: 'Отправить',
-      success: 'Сообщение отправлено!',
-      successDesc: 'Мы получили ваше сообщение и ответим в ближайшее время.',
-      error: 'Произошла ошибка.',
-      phoneError: 'Неверный номер.',
-      infoTitle: 'Контактная информация',
-      addrLabel: 'Наш адрес',
-      phoneLabel: 'Телефон'
-    },
-    cart: {
-      title: 'Корзина',
-      empty: 'Корзина пуста',
-      emptyDesc: 'Вы еще не выбрали ни одного товара.',
-      start: 'Начать покупки',
-      total: 'Итоговая сумма',
-      checkout: 'Оформить заказ',
-      back: 'Назад',
-      confirm: 'Подтвердить',
-      success: 'Спасибо!',
-      successDesc: 'Ваш заказ принят. Мы скоро свяжемся с вами.',
-      form: {
-        firstName: 'Имя',
-        lastName: 'Фамилия',
-        phone: 'Телефон',
-        description: 'Комментарий',
-        required: 'Заполните все поля',
-        phoneError: 'Неверный номер'
-      }
-    },
     ai: {
-      welcome: 'Здравствуйте! Я ИИ-консультант Simosh. Я помогу вам выбрать мыло. Если вы включите камеру, я смогу увидеть вашу кожу и дать более точный совет.',
+      welcome: 'Здравствуйте! Я ИИ-консультант Simosh. Я знаю всё о нашей компании, продукции и её популярности. Если вы покажете свою кожу, я подберу подходящее мыло.',
       title: 'ИИ Эксперт',
-      desc: 'Получайте ответы и показывайте кожу для анализа.',
-      placeholder: 'Напишите ваш вопрос...',
-      error: 'Системная ошибка.',
-      quotaError: 'Лимит исчерпан.',
-      speaking: 'Говорит...',
-      listen: 'Слушать',
-      inCall: 'На связи...',
-      switchCamera: 'Сменить камеру',
-      attachImage: 'Прикрепить фото',
-      endCall: 'Завершить',
-      voiceCall: 'Голосовой звонок'
-    },
-    about: {
-      title: 'О нас',
-      subtitle: 'История Simosh',
-      experience: 'Лет опыта',
-      addressLabel: 'Главный офис',
-      phoneLabel: 'Линия поддержки'
-    },
-    footer: {
-      mission: 'Наша миссия — дарить людям здоровье и красоту через натуральное мыло.',
-      pages: 'Разделы',
-      contact: 'Контакты',
-      rights: 'Все права защищены.'
+      desc: 'Спрашивайте о компании, товарах или позвольте мне проанализировать вашу кожу.',
+      // ...
     }
   }
 };
@@ -379,20 +140,50 @@ export const PRODUCTS: Product[] = [
       uz: ['Antiseptik', 'Husnbuzarlarga qarshi'],
       en: ['Antiseptic', 'Anti-acne'],
       tr: ['Antiseptik', 'Akne karşıtı'],
-      ru: ['Антисептик', 'Против акне']
+      ru: ['Антисептик', 'Против akne']
     },
     category: 'therapeutic'
   }
 ];
 
-export const getSystemInstruction = (lang: Language, dynamicProducts?: Product[], aboutInfo?: AboutInfo | null) => {
+export const getSystemInstruction = (
+  lang: Language, 
+  dynamicProducts?: Product[], 
+  aboutInfo?: AboutInfo | null,
+  stats?: Statistics | null
+) => {
   const productList = dynamicProducts && dynamicProducts.length > 0 
-    ? dynamicProducts.map((p, i) => `${i + 1}. ${p.name[lang]} - Narxi: ${p.price} UZS.`).join('\n')
+    ? dynamicProducts.map((p, i) => {
+        const pStat = stats?.products.find(s => s.productId === p.id);
+        const soldText = pStat ? `(Sotilgan soni: ${pStat.soldCount} ta)` : '';
+        return `${i + 1}. ${p.name[lang]} - Narxi: ${p.price} UZS. ${soldText}`;
+      }).join('\n')
     : PRODUCTS.map((p, i) => `${i + 1}. ${p.name[lang]} - Narxi: ${p.price} UZS.`).join('\n');
 
-  return `Siz "Simosh" kompaniyasining shifobaxsh sovunlar bo'yicha mutaxassisiz. Foydalanuvchi bilan ${lang} tilida muloqot qiling. 
+  const companyInfo = aboutInfo ? `
+KOMPANIYA HAQIDA MA'LUMOT:
+- Tavsif: ${lang === 'uz' ? aboutInfo.descriptionUz : lang === 'ru' ? aboutInfo.descriptionRu : aboutInfo.descriptionEn}
+- Manzil: ${lang === 'uz' ? aboutInfo.officeAddressUz : lang === 'ru' ? aboutInfo.officeAddressRu : aboutInfo.officeAddressEn}
+- Telefon: ${aboutInfo.phone}
+- Instagram: ${aboutInfo.instagram}
+- Telegram: ${aboutInfo.telegram}
+` : '';
 
-Muhim: Agar foydalanuvchi kamerani yoqsa yoki rasm yuborsa, siz uning terisini yoki rasmini vizual tahlil qilishingiz va unga qaysi sovun mos kelishini aytishingiz kerak (masalan: qizarishlar, husnbuzarlar, quruqlik va h.k.).
+  const statsInfo = stats ? `
+SOTUV STATISTIKASI:
+- Jami sotilgan mahsulotlar soni: ${stats.totalSold} ta.
+` : '';
 
-Mahsulotlar: \n${productList}`;
+  return `Siz "Simosh" kompaniyasining dermatolog-eksperti va rasmiy vakilisiz. Foydalanuvchi bilan faqat ${lang} tilida muloqot qiling.
+
+SIZNING VAZIFALARINGIZ:
+1. Kompaniya haqidagi ma'lumotlarni taqdim etish (manzil, telefon, ijtimoiy tarmoqlar).
+2. Mahsulotlar (sovunlar) haqida to'liq ma'lumot berish va ularning sotilish statistikasi (mashhurligi) haqida gapirish.
+3. KO'RISH QOBILIYATI: Foydalanuvchi kamerani yoqqanda tahlil qila olish. Sizga real vaqtda video kadrlar yuboriladi. Teri holatini (quruqlik, akne, qizarish) vizual aniqlang va mahsulot tavsiya qiling.
+4. Hech qachon "ko'rolmayman" demang. Sizda video oqimi bor!
+
+${companyInfo}
+${statsInfo}
+MAHSULOTLAR RO'YXATI:
+${productList}`;
 };

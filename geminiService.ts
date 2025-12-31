@@ -1,14 +1,15 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { getSystemInstruction, TRANSLATIONS } from "./constants";
-import { Message, Language, Product, AboutInfo } from "./types";
+import { Message, Language, Product, AboutInfo, Statistics } from "./types";
 
 export const getGeminiResponse = async (
   history: Message[], 
   lang: Language, 
   products?: Product[], 
   aboutInfo?: AboutInfo | null,
-  imageData?: string // base64 encoded image
+  imageData?: string, // base64 encoded image
+  stats?: Statistics | null
 ) => {
   try {
     if (!process.env.API_KEY) {
@@ -24,7 +25,8 @@ export const getGeminiResponse = async (
       parts: [{ text: msg.text }]
     }));
 
-    // If there is an image, we use generateContent directly for multimodal
+    const systemInstruction = getSystemInstruction(lang, products, aboutInfo, stats);
+
     if (imageData) {
       const result = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -38,17 +40,16 @@ export const getGeminiResponse = async (
           }
         ],
         config: {
-          systemInstruction: getSystemInstruction(lang, products, aboutInfo),
+          systemInstruction: systemInstruction,
         }
       });
       return result.text || TRANSLATIONS[lang]?.ai?.error || "Error";
     }
 
-    // Standard text chat session
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: getSystemInstruction(lang, products, aboutInfo),
+        systemInstruction: systemInstruction,
         temperature: 0.7,
       },
       history: chatHistory
