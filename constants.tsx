@@ -2,11 +2,11 @@
 import { Product, Language, AboutInfo } from './types';
 
 export const API_BASE_URL = 'https://codebyz.online';
-export const TELEGRAM_BOT_TOKEN = '8519627435:AAGMI8QPtKCPW85GR4Hv0yqDc90HKePs4LM';
-export const TELEGRAM_CHAT_IDS = ['7882316826'];
+export const TELEGRAM_BOT_TOKEN = '8557045477:AAHNSYjRcyRs8iRj1qnYXH9yp788v8o9aLk';
+export const TELEGRAM_CHAT_IDS = ['7882316826','7571971490'];
 
 // Web App manzili
-export const FRONTEND_URL = 'https://simosh-admin-backend-wb84.vercel.app/#/orders/in_progress';
+export const FRONTEND_URL = 'https://simosh-admin.vercel.app/#/orders/in_progress';
 
 export const TRANSLATIONS: Record<Language, any> = {
   uz: {
