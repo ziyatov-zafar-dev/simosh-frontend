@@ -37,6 +37,7 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameIntervalRef = useRef<number | null>(null);
+  const sessionPromiseRef = useRef<Promise<any> | null>(null);
 
   const SHARED_VOICE = 'Zephyr';
 
@@ -56,34 +57,14 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     }
   }, [chat.messages, chat.isLoading]);
 
-  const handleSend = async () => {
-    if ((!input.trim() && !selectedImage) || chat.isLoading) return;
-
-    const userMsg: Message = { 
-      role: 'user', 
-      text: input, 
-      image: selectedImage || undefined 
-    };
-    
-    const currentHistory = [...chat.messages, userMsg];
-    
-    setChat(prev => ({
-      ...prev,
-      messages: currentHistory,
-      isLoading: true
-    }));
-    
-    setInput('');
-    const base64Image = selectedImage ? selectedImage.split(',')[1] : undefined;
-    setSelectedImage(null);
-
-    const aiResponse = await getGeminiResponse(currentHistory, lang, products, aboutInfo, base64Image);
-    
-    setChat(prev => ({
-      ...prev,
-      messages: [...currentHistory, { role: 'model', text: aiResponse }],
-      isLoading: false
-    }));
+  // Audio helper functions
+  const encode = (bytes: Uint8Array) => {
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   };
 
   const decode = (base64: string) => {
@@ -115,9 +96,20 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     return buffer;
   }
 
+  const handleSend = async () => {
+    if ((!input.trim() && !selectedImage) || chat.isLoading) return;
+    const userMsg: Message = { role: 'user', text: input, image: selectedImage || undefined };
+    const currentHistory = [...chat.messages, userMsg];
+    setChat(prev => ({ ...prev, messages: currentHistory, isLoading: true }));
+    setInput('');
+    const base64Image = selectedImage ? selectedImage.split(',')[1] : undefined;
+    setSelectedImage(null);
+    const aiResponse = await getGeminiResponse(currentHistory, lang, products, aboutInfo, base64Image);
+    setChat(prev => ({ ...prev, messages: [...currentHistory, { role: 'model', text: aiResponse }], isLoading: false }));
+  };
+
   const handlePlayTTS = async (text: string, msgIndex: number) => {
     if (!process.env.API_KEY || isPlayingId !== null) return;
-    
     setIsPlayingId(msgIndex);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -126,14 +118,9 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
         contents: [{ parts: [{ text: text }] }],
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: SHARED_VOICE },
-            },
-          },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: SHARED_VOICE } } },
         },
       });
-
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (base64Audio) {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -141,39 +128,24 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(ctx.destination);
-        source.onended = () => {
-          setIsPlayingId(null);
-          ctx.close();
-        };
+        source.onended = () => { setIsPlayingId(null); ctx.close(); };
         source.start();
-      } else {
-        setIsPlayingId(null);
-      }
-    } catch (error) {
-      console.error("TTS Error:", error);
-      setIsPlayingId(null);
-    }
+      } else { setIsPlayingId(null); }
+    } catch (error) { setIsPlayingId(null); }
   };
 
   const endVoiceCall = useCallback(() => {
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
-    if (outputAudioContextRef.current) {
-      outputAudioContextRef.current.close().catch(() => {});
-      outputAudioContextRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (frameIntervalRef.current) {
-      window.clearInterval(frameIntervalRef.current);
-      frameIntervalRef.current = null;
-    }
+    if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
+    if (outputAudioContextRef.current) outputAudioContextRef.current.close().catch(() => {});
+    if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    if (frameIntervalRef.current) window.clearInterval(frameIntervalRef.current);
     sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
     sourcesRef.current.clear();
+    audioContextRef.current = null;
+    outputAudioContextRef.current = null;
+    streamRef.current = null;
+    frameIntervalRef.current = null;
+    sessionPromiseRef.current = null;
     nextStartTimeRef.current = 0;
     setIsCalling(false);
     setIsCameraActive(false);
@@ -183,82 +155,35 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     if (!isCalling || !isCameraActive) return;
     const newMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(newMode);
-    
-    if (streamRef.current) {
-      streamRef.current.getVideoTracks().forEach(track => track.stop());
-    }
-
+    if (streamRef.current) streamRef.current.getVideoTracks().forEach(track => track.stop());
     try {
-      const newStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: newMode },
-        audio: false 
-      });
+      const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode }, audio: false });
       const videoTrack = newStream.getVideoTracks()[0];
       if (streamRef.current) {
         const oldTrack = streamRef.current.getVideoTracks()[0];
         if (oldTrack) streamRef.current.removeTrack(oldTrack);
         streamRef.current.addTrack(videoTrack);
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = streamRef.current;
-      }
-    } catch (err) {
-      console.error("Error switching camera:", err);
-    }
+      if (videoRef.current) videoRef.current.srcObject = streamRef.current;
+    } catch (err) { console.error(err); }
   };
 
   const toggleCamera = async () => {
     if (!isCalling) return;
-    
     if (isCameraActive) {
-      const videoTrack = streamRef.current?.getVideoTracks()[0];
-      if (videoTrack) videoTrack.stop();
+      streamRef.current?.getVideoTracks().forEach(t => t.stop());
       setIsCameraActive(false);
     } else {
       try {
-        const cameraStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: facingMode } 
-        });
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } });
         if (streamRef.current) {
           cameraStream.getVideoTracks().forEach(track => streamRef.current!.addTrack(track));
         } else {
           streamRef.current = cameraStream;
         }
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = streamRef.current;
-        }
+        if (videoRef.current) videoRef.current.srcObject = streamRef.current;
         setIsCameraActive(true);
-      } catch (err) {
-        console.error("Camera error:", err);
-      }
-    }
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        const blob = items[i].getAsFile();
-        if (blob) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            setSelectedImage(event.target?.result as string);
-          };
-          reader.readAsDataURL(blob);
-        }
-      }
+      } catch (err) { console.error(err); }
     }
   };
 
@@ -273,7 +198,7 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const sessionPromise = ai.live.connect({
-        model: 'gemini-native-audio-preview-09-2025',
+        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
             setIsCalling(true);
@@ -281,11 +206,10 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
             const scriptProcessor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
-              const l = inputData.length;
-              const int16 = new Int16Array(l);
-              for (let i = 0; i < l; i++) int16[i] = inputData[i] * 32768;
+              const int16 = new Int16Array(inputData.length);
+              for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
               const pcmBlob = {
-                data: btoa(String.fromCharCode(...new Uint8Array(int16.buffer))),
+                data: encode(new Uint8Array(int16.buffer)),
                 mimeType: 'audio/pcm;rate=16000',
               };
               sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob })).catch(() => {});
@@ -301,16 +225,10 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                 if (ctx && video.videoWidth > 0) {
                   canvas.width = video.videoWidth;
                   canvas.height = video.videoHeight;
-                  
-                  ctx.save();
                   ctx.drawImage(video, 0, 0);
-                  ctx.restore();
-                  
                   const base64Data = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
                   sessionPromise.then(session => {
-                    session.sendRealtimeInput({
-                      media: { data: base64Data, mimeType: 'image/jpeg' }
-                    });
+                    session.sendRealtimeInput({ media: { data: base64Data, mimeType: 'image/jpeg' } });
                   }).catch(() => {});
                 }
               }
@@ -330,6 +248,11 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
               nextStartTimeRef.current += audioBuffer.duration;
               sourcesRef.current.add(source);
             }
+            if (message.serverContent?.interrupted) {
+              sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
+              sourcesRef.current.clear();
+              nextStartTimeRef.current = 0;
+            }
           },
           onclose: () => endVoiceCall(),
           onerror: () => endVoiceCall()
@@ -340,8 +263,32 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
           systemInstruction: getSystemInstruction(lang, products, aboutInfo)
         }
       });
+      sessionPromiseRef.current = sessionPromise;
     } catch (err) { console.error(err); }
   }, [lang, products, aboutInfo, endVoiceCall, isCameraActive, facingMode]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setSelectedImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (ev) => setSelectedImage(ev.target?.result as string);
+          reader.readAsDataURL(blob);
+        }
+      }
+    }
+  };
 
   return (
     <section id="ai-assistant" className="py-20 bg-white dark:bg-[#020617] px-4 sm:px-6 relative overflow-hidden font-sans">
@@ -399,7 +346,6 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                         />
                         <canvas ref={canvasRef} className="hidden" />
                         
-                        {/* Camera Control Panel */}
                         <div className="absolute top-4 right-4 flex flex-col gap-3">
                            <button 
                             onClick={switchCamera}
@@ -421,18 +367,12 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                    )}
                 </div>
 
-                <h3 className="text-2xl lg:text-4xl font-black text-white mb-8 tracking-tighter">
-                  {t.inCall}
-                </h3>
+                <h3 className="text-2xl lg:text-4xl font-black text-white mb-8 tracking-tighter">{t.inCall}</h3>
                 
                 <div className="flex gap-6 items-center">
-                  <button 
-                    onClick={toggleCamera}
-                    className={`w-16 h-16 lg:w-20 lg:h-20 rounded-[1.5rem] lg:rounded-[2rem] flex items-center justify-center transition-all ${isCameraActive ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                  >
+                  <button onClick={toggleCamera} className={`w-16 h-16 lg:w-20 lg:h-20 rounded-[1.5rem] lg:rounded-[2rem] flex items-center justify-center transition-all ${isCameraActive ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                     <i className={`fas ${isCameraActive ? 'fa-video' : 'fa-video-slash'} text-xl lg:text-2xl`}></i>
                   </button>
-                  
                   <button onClick={endVoiceCall} className="w-24 h-24 lg:w-28 lg:h-28 bg-red-500 text-white rounded-[2.5rem] flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-red-500/40">
                     <i className="fas fa-phone-slash text-3xl lg:text-4xl"></i>
                   </button>
@@ -447,12 +387,12 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                   <div className={`flex flex-col gap-3 max-w-[90%] lg:max-w-[85%] ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`px-6 lg:px-8 py-4 lg:py-5 shadow-sm text-sm lg:text-lg font-bold leading-relaxed ${
                       m.role === 'user' 
-                        ? 'bg-emerald-600 text-white rounded-[2rem] rounded-tr-none shadow-emerald-500/10' 
+                        ? 'bg-emerald-600 text-white rounded-[2rem] rounded-tr-none' 
                         : 'bg-white dark:bg-white/10 text-slate-800 dark:text-white rounded-[2rem] rounded-tl-none border border-slate-100 dark:border-white/5'
                     }`}>
                       {m.image && (
                         <div className="mb-3 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg">
-                          <img src={m.image} alt="Sent file" className="w-full max-h-64 object-cover" />
+                          <img src={m.image} alt="File" className="w-full max-h-64 object-cover" />
                         </div>
                       )}
                       {m.text && <div>{m.text}</div>}
@@ -482,33 +422,18 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
             
             {/* Input Area */}
             <div className="p-4 lg:p-8 bg-white dark:bg-[#04080e] border-t border-slate-100 dark:border-white/5">
-              {/* Image Preview */}
               {selectedImage && (
                 <div className="mb-4 relative inline-block animate-in slide-in-from-bottom-5">
                    <img src={selectedImage} alt="Selected" className="w-20 h-20 object-cover rounded-2xl shadow-lg border-2 border-emerald-500" />
-                   <button 
-                    onClick={() => setSelectedImage(null)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] shadow-lg"
-                   >
+                   <button onClick={() => setSelectedImage(null)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] shadow-lg">
                      <i className="fas fa-times"></i>
                    </button>
                 </div>
               )}
 
               <div className="flex items-end gap-3 lg:gap-4 max-w-full">
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleImageSelect} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-                
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-14 h-14 lg:w-16 lg:h-16 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-emerald-400 rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:bg-emerald-50 transition-all shrink-0 mb-0.5"
-                  title={t.attachImage}
-                >
+                <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
+                <button onClick={() => fileInputRef.current?.click()} className="w-14 h-14 lg:w-16 lg:h-16 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-emerald-400 rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:bg-emerald-50 transition-all shrink-0 mb-0.5">
                   <i className="fas fa-camera text-xl lg:text-2xl"></i>
                 </button>
 
@@ -522,22 +447,13 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                       e.target.style.height = 'auto';
                       e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
                     }} 
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }} 
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
                     placeholder={t.placeholder} 
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.8rem] lg:rounded-[2.5rem] px-6 lg:px-8 py-4 lg:py-6 text-slate-900 dark:text-white text-sm lg:text-lg font-bold outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 transition-all resize-none shadow-inner min-h-[56px] lg:min-h-[72px]" 
                   />
                 </div>
                 
-                <button 
-                  onClick={handleSend} 
-                  disabled={chat.isLoading || (!input.trim() && !selectedImage)} 
-                  className="w-14 h-14 lg:w-16 lg:h-16 bg-emerald-600 text-white rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-600/20 shrink-0 mb-0.5 disabled:opacity-50"
-                >
+                <button onClick={handleSend} disabled={chat.isLoading || (!input.trim() && !selectedImage)} className="w-14 h-14 lg:w-16 lg:h-16 bg-emerald-600 text-white rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-600/20 shrink-0 mb-0.5 disabled:opacity-50">
                   <i className="fas fa-paper-plane text-xl lg:text-2xl"></i>
                 </button>
               </div>
@@ -547,13 +463,11 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
         </div>
       </div>
       <style>{`
-        .video-container {
-          transition: transform 0.4s ease-in-out;
-        }
-        .mirror-effect {
-          transform: scaleX(-1);
-          -webkit-transform: scaleX(-1);
-        }
+        .video-container { transition: transform 0.4s ease-in-out; }
+        .mirror-effect { transform: scaleX(-1); -webkit-transform: scaleX(-1); }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b98133; border-radius: 10px; }
       `}</style>
     </section>
   );
