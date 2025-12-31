@@ -1,5 +1,5 @@
 
-import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS } from './constants';
+import { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS, FRONTEND_URL } from './constants';
 import { CartItem, Language } from './types';
 
 export const sendOrderToTelegram = async (
@@ -38,8 +38,17 @@ ${productList}
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        parse_mode: 'HTML'
-        // Web App tugmasi olib tashlandi
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🛍 Buyurtmani boshqarish (Web App)",
+                web_app: { url: FRONTEND_URL }
+              }
+            ]
+          ]
+        }
       }),
     })
   );

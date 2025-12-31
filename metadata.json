@@ -1,7 +1,9 @@
+
 {
   "name": "Simosh - Shifobaxsh Sovunlar",
   "description": "Simosh kompaniyasining tabiiy va shifobaxsh sovunlari uchun zamonaviy onlayn do'kon va AI maslahatchi platformasi.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "camera"
   ]
 }

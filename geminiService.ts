@@ -3,25 +3,48 @@ import { GoogleGenAI } from "@google/genai";
 import { getSystemInstruction, TRANSLATIONS } from "./constants";
 import { Message, Language, Product, AboutInfo } from "./types";
 
-export const getGeminiResponse = async (history: Message[], lang: Language, products?: Product[], aboutInfo?: AboutInfo | null) => {
+export const getGeminiResponse = async (
+  history: Message[], 
+  lang: Language, 
+  products?: Product[], 
+  aboutInfo?: AboutInfo | null,
+  imageData?: string // base64 encoded image
+) => {
   try {
     if (!process.env.API_KEY) {
       return "Error: API key not found in environment.";
     }
 
-    // Direct initialization using process.env.API_KEY as per guidelines
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    // Get last message
     const userMessage = history[history.length - 1].text;
     
-    // Format history for Gemini
+    // Formatting history for Gemini
     const chatHistory = history.slice(0, -1).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model' as const,
       parts: [{ text: msg.text }]
     }));
 
-    // Create chat session
+    // If there is an image, we use generateContent directly for multimodal
+    if (imageData) {
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inlineData: { data: imageData, mimeType: 'image/jpeg' } },
+              { text: userMessage || "Ushbu rasmni tahlil qiling va sovun tavsiya qiling." }
+            ]
+          }
+        ],
+        config: {
+          systemInstruction: getSystemInstruction(lang, products, aboutInfo),
+        }
+      });
+      return result.text || TRANSLATIONS[lang]?.ai?.error || "Error";
+    }
+
+    // Standard text chat session
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
@@ -32,21 +55,10 @@ export const getGeminiResponse = async (history: Message[], lang: Language, prod
     });
 
     const result = await chat.sendMessage({ message: userMessage });
-    
-    // Access result.text property directly as per guidelines
     return result.text || (TRANSLATIONS[lang]?.ai?.error || TRANSLATIONS['uz'].ai.error);
   } catch (error: any) {
-    console.error("Gemini API Error Detail:", error);
-    
-    // Detect 429 error (Quota exceeded)
-    if (error.status === 429 || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
-      return TRANSLATIONS[lang]?.ai?.quotaError || TRANSLATIONS['uz'].ai.quotaError;
-    }
-    
-    if (error.message?.includes("API_KEY_INVALID")) {
-      return "Error: Invalid API key.";
-    }
-    
-    return TRANSLATIONS[lang]?.ai?.error || TRANSLATIONS['uz'].ai.error;
+    console.error("Gemini API Error:", error);
+    if (error.status === 429) return TRANSLATIONS[lang]?.ai?.quotaError || "Limit error";
+    return TRANSLATIONS[lang]?.ai?.error || "Error";
   }
 };

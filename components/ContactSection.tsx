@@ -46,7 +46,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ lang, aboutInfo }) => {
           chat_id: chatId, 
           text: msg,
           parse_mode: 'HTML'
-          // reply_markup olib tashlandi
+          // Tugma (reply_markup) bu yerda yuborilmaydi
         }),
       })
     );

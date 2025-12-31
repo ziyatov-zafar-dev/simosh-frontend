@@ -22,13 +22,21 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
   });
   const [input, setInput] = useState('');
   const [isCalling, setIsCalling] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef<number>(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameIntervalRef = useRef<number | null>(null);
 
   const SHARED_VOICE = 'Zephyr';
 
@@ -49,9 +57,14 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
   }, [chat.messages, chat.isLoading]);
 
   const handleSend = async () => {
-    if (!input.trim() || chat.isLoading) return;
+    if ((!input.trim() && !selectedImage) || chat.isLoading) return;
 
-    const userMsg: Message = { role: 'user', text: input };
+    const userMsg: Message = { 
+      role: 'user', 
+      text: input, 
+      image: selectedImage || undefined 
+    };
+    
     const currentHistory = [...chat.messages, userMsg];
     
     setChat(prev => ({
@@ -59,9 +72,12 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
       messages: currentHistory,
       isLoading: true
     }));
+    
     setInput('');
+    const base64Image = selectedImage ? selectedImage.split(',')[1] : undefined;
+    setSelectedImage(null);
 
-    const aiResponse = await getGeminiResponse(currentHistory, lang, products, aboutInfo);
+    const aiResponse = await getGeminiResponse(currentHistory, lang, products, aboutInfo, base64Image);
     
     setChat(prev => ({
       ...prev,
@@ -148,26 +164,120 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
       outputAudioContextRef.current.close().catch(() => {});
       outputAudioContextRef.current = null;
     }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (frameIntervalRef.current) {
+      window.clearInterval(frameIntervalRef.current);
+      frameIntervalRef.current = null;
+    }
     sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
     sourcesRef.current.clear();
     nextStartTimeRef.current = 0;
     setIsCalling(false);
+    setIsCameraActive(false);
   }, []);
+
+  const switchCamera = async () => {
+    if (!isCalling || !isCameraActive) return;
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    
+    if (streamRef.current) {
+      streamRef.current.getVideoTracks().forEach(track => track.stop());
+    }
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: newMode },
+        audio: false 
+      });
+      const videoTrack = newStream.getVideoTracks()[0];
+      if (streamRef.current) {
+        const oldTrack = streamRef.current.getVideoTracks()[0];
+        if (oldTrack) streamRef.current.removeTrack(oldTrack);
+        streamRef.current.addTrack(videoTrack);
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+    } catch (err) {
+      console.error("Error switching camera:", err);
+    }
+  };
+
+  const toggleCamera = async () => {
+    if (!isCalling) return;
+    
+    if (isCameraActive) {
+      const videoTrack = streamRef.current?.getVideoTracks()[0];
+      if (videoTrack) videoTrack.stop();
+      setIsCameraActive(false);
+    } else {
+      try {
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: facingMode } 
+        });
+        if (streamRef.current) {
+          cameraStream.getVideoTracks().forEach(track => streamRef.current!.addTrack(track));
+        } else {
+          streamRef.current = cameraStream;
+        }
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+        }
+        setIsCameraActive(true);
+      } catch (err) {
+        console.error("Camera error:", err);
+      }
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setSelectedImage(event.target?.result as string);
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+    }
+  };
 
   const startVoiceCall = useCallback(async () => {
     if (!process.env.API_KEY) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
             setIsCalling(true);
-            const source = audioContextRef.current!.createMediaStreamSource(stream);
+            const source = audioContextRef.current!.createMediaStreamSource(streamRef.current!);
             const scriptProcessor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
@@ -182,6 +292,29 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
             };
             source.connect(scriptProcessor);
             scriptProcessor.connect(audioContextRef.current!.destination);
+
+            frameIntervalRef.current = window.setInterval(() => {
+              if (isCameraActive && videoRef.current && canvasRef.current) {
+                const video = videoRef.current;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                if (ctx && video.videoWidth > 0) {
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  
+                  ctx.save();
+                  ctx.drawImage(video, 0, 0);
+                  ctx.restore();
+                  
+                  const base64Data = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+                  sessionPromise.then(session => {
+                    session.sendRealtimeInput({
+                      media: { data: base64Data, mimeType: 'image/jpeg' }
+                    });
+                  }).catch(() => {});
+                }
+              }
+            }, 1000); 
           },
           onmessage: async (message: LiveServerMessage) => {
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -208,7 +341,7 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
         }
       });
     } catch (err) { console.error(err); }
-  }, [lang, products, aboutInfo, endVoiceCall]);
+  }, [lang, products, aboutInfo, endVoiceCall, isCameraActive, facingMode]);
 
   return (
     <section id="ai-assistant" className="py-20 bg-white dark:bg-[#020617] px-4 sm:px-6 relative overflow-hidden font-sans">
@@ -231,7 +364,7 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                 className={`flex-1 px-12 py-7 rounded-[2.5rem] font-black uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center justify-center gap-5 text-xs ${isCalling ? 'bg-red-500 text-white' : 'bg-slate-900 dark:bg-emerald-600 text-white hover:scale-105 active:scale-95'}`}
               >
                  <i className={`fas ${isCalling ? 'fa-phone-slash' : 'fa-phone-alt'} text-xl`}></i>
-                 {isCalling ? "Aloqani yakunlash" : "Ovozli muloqot"}
+                 {isCalling ? t.endCall : t.voiceCall}
               </button>
             </div>
           </div>
@@ -254,15 +387,56 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
             {/* Voice Call Overlay */}
             {isCalling && (
               <div className="absolute inset-0 z-50 bg-emerald-950/95 flex flex-col items-center justify-center p-8 lg:p-12 text-center animate-in fade-in duration-700">
-                <div className="relative mb-16">
-                   <div className="w-48 h-48 lg:w-64 lg:h-64 bg-emerald-800 rounded-[3.5rem] lg:rounded-[4.5rem] flex items-center justify-center shadow-3xl animate-pulse">
-                      <i className="fas fa-microphone text-6xl lg:text-8xl text-white"></i>
-                   </div>
+                <div className="relative mb-12 w-full flex flex-col items-center">
+                   {isCameraActive ? (
+                     <div className="w-64 h-80 lg:w-80 lg:h-[400px] bg-black rounded-[3rem] overflow-hidden shadow-3xl border-2 border-emerald-500/30 relative">
+                        <video 
+                          ref={videoRef} 
+                          autoPlay 
+                          playsInline 
+                          muted 
+                          className={`w-full h-full object-cover video-container ${facingMode === 'user' ? 'mirror-effect' : ''}`}
+                        />
+                        <canvas ref={canvasRef} className="hidden" />
+                        
+                        {/* Camera Control Panel */}
+                        <div className="absolute top-4 right-4 flex flex-col gap-3">
+                           <button 
+                            onClick={switchCamera}
+                            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 flex items-center justify-center active:scale-90"
+                            title={t.switchCamera}
+                           >
+                              <i className="fas fa-camera-rotate"></i>
+                           </button>
+                        </div>
+
+                        <div className="absolute bottom-4 left-0 right-0 text-center">
+                          <span className="bg-emerald-500/80 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-sm">Live Analysis</span>
+                        </div>
+                     </div>
+                   ) : (
+                     <div className="w-48 h-48 lg:w-64 lg:h-64 bg-emerald-800 rounded-[3.5rem] lg:rounded-[4.5rem] flex items-center justify-center shadow-3xl animate-pulse">
+                        <i className="fas fa-microphone text-6xl lg:text-8xl text-white"></i>
+                     </div>
+                   )}
                 </div>
-                <h3 className="text-3xl lg:text-4xl font-black text-white mb-6">Muloqotdamiz...</h3>
-                <button onClick={endVoiceCall} className="w-24 h-24 lg:w-28 lg:h-28 bg-red-500 text-white rounded-[2rem] flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
-                  <i className="fas fa-phone-slash text-3xl lg:text-4xl"></i>
-                </button>
+
+                <h3 className="text-2xl lg:text-4xl font-black text-white mb-8 tracking-tighter">
+                  {t.inCall}
+                </h3>
+                
+                <div className="flex gap-6 items-center">
+                  <button 
+                    onClick={toggleCamera}
+                    className={`w-16 h-16 lg:w-20 lg:h-20 rounded-[1.5rem] lg:rounded-[2rem] flex items-center justify-center transition-all ${isCameraActive ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                  >
+                    <i className={`fas ${isCameraActive ? 'fa-video' : 'fa-video-slash'} text-xl lg:text-2xl`}></i>
+                  </button>
+                  
+                  <button onClick={endVoiceCall} className="w-24 h-24 lg:w-28 lg:h-28 bg-red-500 text-white rounded-[2.5rem] flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-red-500/40">
+                    <i className="fas fa-phone-slash text-3xl lg:text-4xl"></i>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -276,12 +450,17 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                         ? 'bg-emerald-600 text-white rounded-[2rem] rounded-tr-none shadow-emerald-500/10' 
                         : 'bg-white dark:bg-white/10 text-slate-800 dark:text-white rounded-[2rem] rounded-tl-none border border-slate-100 dark:border-white/5'
                     }`}>
-                      {m.text}
+                      {m.image && (
+                        <div className="mb-3 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg">
+                          <img src={m.image} alt="Sent file" className="w-full max-h-64 object-cover" />
+                        </div>
+                      )}
+                      {m.text && <div>{m.text}</div>}
                     </div>
                     {m.role === 'model' && (
                       <button 
                         onClick={() => handlePlayTTS(m.text, i)}
-                        className={`text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all ${isPlayingId === i ? 'bg-emerald-600 text-white' : ''}`}
+                        className={`text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-emerald-500/20 text-emerald-600 hover:bg-emerald-50 hover:text-white transition-all ${isPlayingId === i ? 'bg-emerald-600 text-white' : ''}`}
                       >
                         <i className={`fas ${isPlayingId === i ? 'fa-spinner fa-spin' : 'fa-play-circle'} mr-2`}></i>
                         {isPlayingId === i ? t.speaking : t.listen}
@@ -301,13 +480,43 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
               )}
             </div>
             
-            {/* Input Area - Redesigned for Mobile (Chotki Version) */}
+            {/* Input Area */}
             <div className="p-4 lg:p-8 bg-white dark:bg-[#04080e] border-t border-slate-100 dark:border-white/5">
+              {/* Image Preview */}
+              {selectedImage && (
+                <div className="mb-4 relative inline-block animate-in slide-in-from-bottom-5">
+                   <img src={selectedImage} alt="Selected" className="w-20 h-20 object-cover rounded-2xl shadow-lg border-2 border-emerald-500" />
+                   <button 
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] shadow-lg"
+                   >
+                     <i className="fas fa-times"></i>
+                   </button>
+                </div>
+              )}
+
               <div className="flex items-end gap-3 lg:gap-4 max-w-full">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleImageSelect} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-14 h-14 lg:w-16 lg:h-16 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-emerald-400 rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:bg-emerald-50 transition-all shrink-0 mb-0.5"
+                  title={t.attachImage}
+                >
+                  <i className="fas fa-camera text-xl lg:text-2xl"></i>
+                </button>
+
                 <div className="flex-1 relative">
                   <textarea 
                     rows={1}
                     value={input} 
+                    onPaste={handlePaste}
                     onChange={(e) => {
                       setInput(e.target.value);
                       e.target.style.height = 'auto';
@@ -323,10 +532,11 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[1.8rem] lg:rounded-[2.5rem] px-6 lg:px-8 py-4 lg:py-6 text-slate-900 dark:text-white text-sm lg:text-lg font-bold outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 transition-all resize-none shadow-inner min-h-[56px] lg:min-h-[72px]" 
                   />
                 </div>
+                
                 <button 
                   onClick={handleSend} 
-                  disabled={chat.isLoading || !input.trim()} 
-                  className="w-14 h-14 lg:w-16 lg:h-16 bg-emerald-600 text-white rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-600/20 shrink-0 mb-0.5"
+                  disabled={chat.isLoading || (!input.trim() && !selectedImage)} 
+                  className="w-14 h-14 lg:w-16 lg:h-16 bg-emerald-600 text-white rounded-2xl lg:rounded-[1.8rem] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-600/20 shrink-0 mb-0.5 disabled:opacity-50"
                 >
                   <i className="fas fa-paper-plane text-xl lg:text-2xl"></i>
                 </button>
@@ -336,6 +546,15 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
           </div>
         </div>
       </div>
+      <style>{`
+        .video-container {
+          transition: transform 0.4s ease-in-out;
+        }
+        .mirror-effect {
+          transform: scaleX(-1);
+          -webkit-transform: scaleX(-1);
+        }
+      `}</style>
     </section>
   );
 };

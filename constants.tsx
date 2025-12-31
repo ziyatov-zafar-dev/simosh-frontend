@@ -20,7 +20,7 @@ export const TRANSLATIONS: Record<Language, any> = {
       badge: '100% Organik Mahsulot',
       title: 'Tabiatning',
       titleAccent: 'Sof Mo\'jizasi',
-      desc: 'Simosh sovunlari — bu faqatgina tozalik emas, balki teringiz uchun haqiqiy shifobaxsh terapiyadir.',
+      desc: 'Simosh sovunlari — bu faqatgina tozalik emas, bali teringiz uchun haqiqiy shifobaxsh terapiyadir.',
       buy: 'Xarid qilish',
       ai: 'AI Maslahatchi',
       feature1: 'Tabiiy tarkib',
@@ -51,7 +51,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     cart: {
       title: 'Savat',
       empty: 'Savat bo\'sh',
-      emptyDesc: 'Hali hech qanday mahsulot tanlamadingiz.',
+      emptyDesc: 'Hali hech qanday mahsulot tanlamadinigiz.',
       start: 'Xaridni boshlash',
       total: 'Jami summa',
       checkout: 'Buyurtma berish',
@@ -69,14 +69,19 @@ export const TRANSLATIONS: Record<Language, any> = {
       }
     },
     ai: {
-      welcome: 'Assalomu alaykum! Men Simosh AI maslahatchisiman. Teringiz turiga qarab eng yaxshi sovunni tanlashda yordam beraman.',
+      welcome: 'Assalomu alaykum! Men Simosh AI maslahatchisiman. Teringiz turiga qarab eng yaxshi sovunni tanlashda yordam beraman. Agar kamerangizni yoqsangiz, teringizni ko\'rib aniqroq maslahat bera olaman.',
       title: 'AI Ekspert',
-      desc: 'Savollaringizga soniyalarda javob oling.',
+      desc: 'Savollaringizga soniyalarda javob oling va teringizni ko\'rsating.',
       placeholder: 'Savolingizni yozing...',
       error: 'Tizimda xatolik.',
       quotaError: 'Limit tugadi.',
       speaking: 'Gapirmoqda...',
-      listen: 'Eshiting'
+      listen: 'Eshiting',
+      inCall: 'Muloqotdamiz...',
+      switchCamera: 'Kamerani almashtirish',
+      attachImage: 'Rasm biriktirish',
+      endCall: 'Yakunlash',
+      voiceCall: 'Ovozli muloqot'
     },
     about: {
       title: 'Biz Haqimizda',
@@ -152,14 +157,19 @@ export const TRANSLATIONS: Record<Language, any> = {
       }
     },
     ai: {
-      welcome: 'Hello! I am Simosh AI assistant. I will help you choose the best soap based on your skin type.',
+      welcome: 'Hello! I am Simosh AI assistant. I will help you choose the best soap. If you turn on your camera, I can see your skin and provide more accurate advice.',
       title: 'AI Expert',
-      desc: 'Get answers to your questions in seconds.',
+      desc: 'Get answers and show your skin for analysis.',
       placeholder: 'Type your question...',
       error: 'System error.',
       quotaError: 'Quota reached.',
       speaking: 'Speaking...',
-      listen: 'Listen'
+      listen: 'Listen',
+      inCall: 'In Call...',
+      switchCamera: 'Switch Camera',
+      attachImage: 'Attach Image',
+      endCall: 'End Call',
+      voiceCall: 'Voice Call'
     },
     about: {
       title: 'About Us',
@@ -235,14 +245,19 @@ export const TRANSLATIONS: Record<Language, any> = {
       }
     },
     ai: {
-      welcome: 'Merhaba! Ben Simosh AI asistanıyım. Cilt tipinize göre en iyi sabunu seçmenize yardımcı olacağım.',
+      welcome: 'Merhaba! Ben Simosh AI asistanıyım. En iyi sabunu seçmenize yardımcı olacağım. Kameranızı açarsanız cildinizi analiz edebilirim.',
       title: 'AI Uzmanı',
-      desc: 'Sorularınıza saniyeler içinde yanıt alın.',
+      desc: 'Yanıt alın ve cildinizi analiz için gösterin.',
       placeholder: 'Sorunuzu yazın...',
       error: 'Sistem hatası.',
       quotaError: 'Kota doldu.',
       speaking: 'Konuşuyor...',
-      listen: 'Dinle'
+      listen: 'Dinle',
+      inCall: 'İletişim...',
+      switchCamera: 'Kamerayı Değiştir',
+      attachImage: 'Resim Ekle',
+      endCall: 'Kapat',
+      voiceCall: 'Sesli Arama'
     },
     about: {
       title: 'Hakkımızda',
@@ -318,14 +333,19 @@ export const TRANSLATIONS: Record<Language, any> = {
       }
     },
     ai: {
-      welcome: 'Здравствуйте! Я ИИ-консультант Simosh. Помогу подобрать лучшее мыло по типу вашей кожи.',
+      welcome: 'Здравствуйте! Я ИИ-консультант Simosh. Я помогу вам выбрать мыло. Если вы включите камеру, я смогу увидеть вашу кожу и дать более точный совет.',
       title: 'ИИ Эксперт',
-      desc: 'Получайте ответы на вопросы за секунды.',
+      desc: 'Получайте ответы и показывайте кожу для анализа.',
       placeholder: 'Напишите ваш вопрос...',
       error: 'Системная ошибка.',
       quotaError: 'Лимит исчерпан.',
       speaking: 'Говорит...',
-      listen: 'Слушать'
+      listen: 'Слушать',
+      inCall: 'На связи...',
+      switchCamera: 'Сменить камеру',
+      attachImage: 'Прикрепить фото',
+      endCall: 'Завершить',
+      voiceCall: 'Голосовой звонок'
     },
     about: {
       title: 'О нас',
@@ -370,5 +390,9 @@ export const getSystemInstruction = (lang: Language, dynamicProducts?: Product[]
     ? dynamicProducts.map((p, i) => `${i + 1}. ${p.name[lang]} - Narxi: ${p.price} UZS.`).join('\n')
     : PRODUCTS.map((p, i) => `${i + 1}. ${p.name[lang]} - Narxi: ${p.price} UZS.`).join('\n');
 
-  return `Siz "Simosh" kompaniyasining shifobaxsh sovunlar bo'yicha mutaxassisiz. Foydalanuvchi bilan ${lang} tilida muloqot qiling. Mahsulotlar: \n${productList}`;
+  return `Siz "Simosh" kompaniyasining shifobaxsh sovunlar bo'yicha mutaxassisiz. Foydalanuvchi bilan ${lang} tilida muloqot qiling. 
+
+Muhim: Agar foydalanuvchi kamerani yoqsa yoki rasm yuborsa, siz uning terisini yoki rasmini vizual tahlil qilishingiz va unga qaysi sovun mos kelishini aytishingiz kerak (masalan: qizarishlar, husnbuzarlar, quruqlik va h.k.).
+
+Mahsulotlar: \n${productList}`;
 };

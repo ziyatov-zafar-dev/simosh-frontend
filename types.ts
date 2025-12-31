@@ -50,6 +50,7 @@ export interface CartItem extends Product {
 export interface Message {
   role: 'user' | 'model';
   text: string;
+  image?: string; // Base64 string for display and processing
 }
 
 export interface ChatState {
