@@ -58,7 +58,18 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  const t = TRANSLATIONS[lang] || TRANSLATIONS['uz'];
+  // Xavfsiz tarjima olish: agar tanlangan tilda bo'lim bo'lmasa, 'uz'ga qaytadi
+  const t = useMemo(() => {
+    const selected = TRANSLATIONS[lang] || TRANSLATIONS['uz'];
+    const uz = TRANSLATIONS['uz'];
+    return {
+      ...uz,
+      ...selected,
+      products: selected.products || uz.products,
+      cart: selected.cart || uz.cart,
+      nav: selected.nav || uz.nav,
+    };
+  }, [lang]);
 
   const navigate = useCallback((path: string) => {
     window.location.hash = path.startsWith('#') ? path : `#${path}`;
@@ -93,12 +104,12 @@ const App: React.FC = () => {
     e.preventDefault();
     
     if (!formData.firstName || !formData.lastName || !formData.phone || cart.length === 0) {
-      alert(t.cart.form.required || "Barcha maydonlarni to'ldiring");
+      alert(t.cart.form.required);
       return;
     }
 
     if (!isValidPhoneParts(countryCode, formData.phone)) {
-      alert(t.cart.form.phoneError || "Telefon raqami noto'g'ri");
+      alert(t.cart.form.phoneError);
       return;
     }
     
@@ -118,16 +129,15 @@ const App: React.FC = () => {
 
       if (apiSuccess) {
         await sendOrderToTelegram({ ...formData, phone: prettyPhone }, cart, cartTotal, lang).catch(console.error);
-
         setIsOrderSubmitted(true);
         setCart([]);
         setFormData({ firstName: '', lastName: '', phone: '', description: '' });
       } else {
-        alert(t.cart.error || "Buyurtma berishda xatolik yuz berdi.");
+        alert(t.cart.error);
       }
     } catch (error) {
       console.error("Checkout process failed:", error);
-      alert(t.cart.error || "Tizimda kutilmagan xatolik yuz berdi.");
+      alert(t.cart.error);
     } finally {
       setIsSubmitting(false);
     }

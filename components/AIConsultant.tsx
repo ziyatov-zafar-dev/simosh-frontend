@@ -13,7 +13,10 @@ interface AIConsultantProps {
 }
 
 const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }) => {
-  const t = TRANSLATIONS[lang]?.ai || TRANSLATIONS['uz'].ai;
+  // Robustly handle missing translation keys with fallback to 'uz'
+  const t = (TRANSLATIONS[lang]?.ai && TRANSLATIONS[lang].ai.desc) 
+    ? TRANSLATIONS[lang].ai 
+    : TRANSLATIONS['uz'].ai;
   
   const [chat, setChat] = useState<ChatState>({
     messages: [
@@ -21,10 +24,9 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     ],
     isLoading: false
   });
+  
   const [input, setInput] = useState('');
   const [isCalling, setIsCalling] = useState(false);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
   const [stats, setStats] = useState<Statistics | null>(null);
@@ -36,14 +38,10 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const frameIntervalRef = useRef<number | null>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
 
   const SHARED_VOICE = 'Zephyr';
 
-  // Statistika va boshqa ma'lumotlarni yuklash
   useEffect(() => {
     fetchStatistics().then(setStats).catch(console.error);
   }, []);
@@ -144,54 +142,15 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
     if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
     if (outputAudioContextRef.current) outputAudioContextRef.current.close().catch(() => {});
     if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
-    if (frameIntervalRef.current) window.clearInterval(frameIntervalRef.current);
     sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
     sourcesRef.current.clear();
     audioContextRef.current = null;
     outputAudioContextRef.current = null;
     streamRef.current = null;
-    frameIntervalRef.current = null;
     sessionPromiseRef.current = null;
     nextStartTimeRef.current = 0;
     setIsCalling(false);
-    setIsCameraActive(false);
   }, []);
-
-  const switchCamera = async () => {
-    if (!isCalling || !isCameraActive) return;
-    const newMode = facingMode === 'user' ? 'environment' : 'user';
-    setFacingMode(newMode);
-    if (streamRef.current) streamRef.current.getVideoTracks().forEach(track => track.stop());
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newMode }, audio: false });
-      const videoTrack = newStream.getVideoTracks()[0];
-      if (streamRef.current) {
-        const oldTrack = streamRef.current.getVideoTracks()[0];
-        if (oldTrack) streamRef.current.removeTrack(oldTrack);
-        streamRef.current.addTrack(videoTrack);
-      }
-      if (videoRef.current) videoRef.current.srcObject = streamRef.current;
-    } catch (err) { console.error(err); }
-  };
-
-  const toggleCamera = async () => {
-    if (!isCalling) return;
-    if (isCameraActive) {
-      streamRef.current?.getVideoTracks().forEach(t => t.stop());
-      setIsCameraActive(false);
-    } else {
-      try {
-        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } });
-        if (streamRef.current) {
-          cameraStream.getVideoTracks().forEach(track => streamRef.current!.addTrack(track));
-        } else {
-          streamRef.current = cameraStream;
-        }
-        if (videoRef.current) videoRef.current.srcObject = streamRef.current;
-        setIsCameraActive(true);
-      } catch (err) { console.error(err); }
-    }
-  };
 
   const startVoiceCall = useCallback(async () => {
     if (!process.env.API_KEY) return;
@@ -222,23 +181,6 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
             };
             source.connect(scriptProcessor);
             scriptProcessor.connect(audioContextRef.current!.destination);
-
-            frameIntervalRef.current = window.setInterval(() => {
-              if (isCameraActive && videoRef.current && canvasRef.current) {
-                const video = videoRef.current;
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                if (ctx && video.videoWidth > 0) {
-                  canvas.width = 480; 
-                  canvas.height = (video.videoHeight / video.videoWidth) * 480;
-                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                  const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-                  sessionPromise.then(session => {
-                    session.sendRealtimeInput({ media: { data: base64Data, mimeType: 'image/jpeg' } });
-                  }).catch(() => {});
-                }
-              }
-            }, 1000); 
           },
           onmessage: async (message: LiveServerMessage) => {
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -273,7 +215,7 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
       });
       sessionPromiseRef.current = sessionPromise;
     } catch (err) { console.error(err); }
-  }, [lang, products, aboutInfo, endVoiceCall, isCameraActive, facingMode, stats]);
+  }, [lang, products, aboutInfo, endVoiceCall, stats]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -352,44 +294,14 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
             {isCalling && (
               <div className="absolute inset-0 z-50 bg-emerald-950/95 flex flex-col items-center justify-center p-8 lg:p-12 text-center animate-in fade-in duration-700">
                 <div className="relative mb-12 w-full flex flex-col items-center">
-                   {isCameraActive ? (
-                     <div className="w-64 h-80 lg:w-80 lg:h-[400px] bg-black rounded-[3rem] overflow-hidden shadow-3xl border-2 border-emerald-500/30 relative">
-                        <video 
-                          ref={videoRef} 
-                          autoPlay 
-                          playsInline 
-                          muted 
-                          className={`w-full h-full object-cover video-container ${facingMode === 'user' ? 'mirror-effect' : ''}`}
-                        />
-                        <canvas ref={canvasRef} className="hidden" />
-                        
-                        <div className="absolute top-4 right-4 flex flex-col gap-3">
-                           <button 
-                            onClick={switchCamera}
-                            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 flex items-center justify-center active:scale-90"
-                            title={t.switchCamera}
-                           >
-                              <i className="fas fa-camera-rotate"></i>
-                           </button>
-                        </div>
-
-                        <div className="absolute bottom-4 left-0 right-0 text-center">
-                          <span className="bg-emerald-500/80 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-sm">Live Analysis</span>
-                        </div>
-                     </div>
-                   ) : (
-                     <div className="w-48 h-48 lg:w-64 lg:h-64 bg-emerald-800 rounded-[3.5rem] lg:rounded-[4.5rem] flex items-center justify-center shadow-3xl animate-pulse">
-                        <i className="fas fa-microphone text-6xl lg:text-8xl text-white"></i>
-                     </div>
-                   )}
+                  <div className="w-48 h-48 lg:w-64 lg:h-64 bg-emerald-800 rounded-[3.5rem] lg:rounded-[4.5rem] flex items-center justify-center shadow-3xl animate-pulse">
+                    <i className="fas fa-microphone text-6xl lg:text-8xl text-white"></i>
+                  </div>
                 </div>
 
                 <h3 className="text-2xl lg:text-4xl font-black text-white mb-8 tracking-tighter">{t.inCall}</h3>
                 
                 <div className="flex gap-6 items-center">
-                  <button onClick={toggleCamera} className={`w-16 h-16 lg:w-20 lg:h-20 rounded-[1.5rem] lg:rounded-[2rem] flex items-center justify-center transition-all ${isCameraActive ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                    <i className={`fas ${isCameraActive ? 'fa-video' : 'fa-video-slash'} text-xl lg:text-2xl`}></i>
-                  </button>
                   <button onClick={endVoiceCall} className="w-24 h-24 lg:w-28 lg:h-28 bg-red-500 text-white rounded-[2.5rem] flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-red-500/40">
                     <i className="fas fa-phone-slash text-3xl lg:text-4xl"></i>
                   </button>
@@ -480,8 +392,6 @@ const AIConsultant: React.FC<AIConsultantProps> = ({ lang, products, aboutInfo }
         </div>
       </div>
       <style>{`
-        .video-container { transition: transform 0.4s ease-in-out; }
-        .mirror-effect { transform: scaleX(-1); -webkit-transform: scaleX(-1); }
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b98133; border-radius: 10px; }

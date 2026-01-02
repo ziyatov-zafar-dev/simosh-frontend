@@ -10,13 +10,17 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({ lang, aboutInfo, onNavigate }) => {
-  const t = TRANSLATIONS[lang].hero;
+  // Robust fallback for hero translations
+  const t = (TRANSLATIONS[lang] && TRANSLATIONS[lang].hero) 
+    ? TRANSLATIONS[lang].hero 
+    : TRANSLATIONS['uz'].hero;
+
   const description = aboutInfo ? (
     lang === 'uz' ? aboutInfo.descriptionUz :
     lang === 'ru' ? aboutInfo.descriptionRu :
     lang === 'tr' ? aboutInfo.descriptionTr :
     aboutInfo.descriptionEn
-  ) : t.desc;
+  ) : (t.desc || '');
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 pb-12 overflow-hidden px-4">
